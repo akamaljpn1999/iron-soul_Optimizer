@@ -12,8 +12,14 @@
 <section class="panel"><h2>⑦ 攻撃演算（自動）</h2><p class="muted">入力済みの攻撃値・各種ボーナスから自動推定します。検証⑬のスキル1実測（武器20・攻撃+10%・スキルダメ+16%・係数600%・非クリ4731）と、武器20→21のスキル増分+8を内部基準として使用。通常攻撃とクリティカルは実測検証済みです。レベル基礎ダメージの成長式（初期3・毎レベル+5）はLv.120以外未検証です。</p><div id="autoCalc" class="cards"></div></section>
 <section class="panel"><h2>⑧ ダメージシミュレーション</h2><h3>通常攻撃（推定）</h3><div id="normalResults" class="cards"></div><hr><div id="skills"></div><p class="muted">各スキルは「1ヒットの係数 × ヒット数」で合計係数を算出します。表示ダメージは全ヒット合計の推定値です。期待火力 = 非クリティカル火力 × (1−クリ率) ＋ クリティカル火力 × クリ率。例：クリ率8%、クリダメ20%なら非クリ火力の1.016倍です。これは1ヒットあたりの数学的期待値で、実際の単発結果とは異なります。</p></section>
 
-<section class="panel" id="optimizerPanel"><div class="optimizer-head"><div><h2>⑨ 装備・ペット・巻物 オプティマイザー（試作）</h2><p class="muted">Ver.3.3の計算式を変更せず、登録した候補を総当たりしてスキル1の期待火力TOP5を表示します。</p></div></div>
-<div class="optimizer-grid">
+<section class="panel" id="optimizerPanel"><div class="optimizer-head"><div><h2>⑨ 装備・ペット・巻物 オプティマイザー（Ver.3.5）</h2><p class="muted">Ver.3.3の計算式を変更せず、②の現在装備と追加候補を総当たりしてスキル1の期待火力TOP5を表示します。</p></div></div>
+<div class="hint" style="margin:12px 0">
+<label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+<input id="includeCurrentGear" type="checkbox" checked style="width:20px;height:20px;flex:none">
+<strong>②で入力した装備と、既存のペット・巻物も総当たり候補に含める</strong>
+</label>
+<p class="mini">ONなら「現在装備」を各カテゴリーの候補に追加します。下の「＋追加」で登録した候補と比較します。②の数値を変更した場合も、計算時の最新値を使用します。</p>
+</div><div class="optimizer-grid">
 <div class="catbox"><h3>⚔ 武器候補</h3><div id="weaponCandidates"></div><button class="addbtn" onclick="addCandidate('weapon')">＋ 武器を追加</button></div>
 <div class="catbox"><h3>🪖 頭候補</h3><div id="headCandidates"></div><button class="addbtn" onclick="addCandidate('head')">＋ 頭を追加</button></div>
 <div class="catbox"><h3>🛡 鎧候補</h3><div id="armorCandidates"></div><button class="addbtn" onclick="addCandidate('armor')">＋ 鎧を追加</button></div>
@@ -21,7 +27,7 @@
 <div class="catbox"><h3>📜 巻物候補</h3><div id="scrollCandidates"></div><button class="addbtn" onclick="addCandidate('scroll')">＋ 巻物を追加</button></div>
 </div>
 <button class="runbtn" onclick="runOptimizer()">⚡ 登録候補を総当たりしてTOP5を計算</button>
-<p class="mini">試作版では各候補の%値を合計して比較します。クリ率は100%で上限。武器は攻撃実数値、頭・鎧はHP実数値も候補ごとに登録できます。候補を1件も登録していないカテゴリは現在のVer.3.3入力値を使用します。</p>
+<p class="mini">試作版では各候補の%値を合計して比較します。クリ率は100%で上限。武器は攻撃実数値、頭・鎧はHP実数値も候補ごとに登録できます。②を含める設定がONなら常に現在入力値も比較対象です。OFFで候補がないカテゴリだけ、現在入力値を固定使用します。</p>
 <div id="optimizerSummary" class="hint"></div><div id="optimizerResults"></div>
 </section>
 <section class="panel"><h2>計算式・注意事項</h2><p>同種%合計 = 武器 + 頭 + 鎧 + 種族 + ペット + 巻物。HP UP合計にはステータス振り分けHP%も加算します。HP = floor((レベル加算HP + 頭HP + 鎧HP) × (1 + HP UP合計/100))。固定HP +66 は廃止。攻撃ボーナスは別枠、スキルボーナスは別枠、クリダメ合計には初期値20%を加算し、最後に適用する仮定です。通常攻撃の内部値 = (ステ振りATK + 武器ATK + 3 + 5×(Lv−1)) × 攻撃倍率。通常表示とクリティカル表示はそれぞれ内部値から最後に小数点以下切り捨て。Lv由来の基礎ダメージはLv.120実測からの暫定仮説で、上限解放後に再検証します。スキル火力は検証⑬の実測基準から推定します。HP計算は実測で検証済み（ペット追加時の1ポイント差は記録として留保）。HP強化値の途中成長と丸め順は未検証です。+12予測は、部位別の実測最終倍率 M を用いて「現在値 ÷ (1 + (M - 1) × 現在強化度 / 12) × M」で算出します。途中段階の均等増加は暫定仮定です。</p><button id="reset">入力を初期値に戻す</button></section>
@@ -45,7 +51,12 @@ function addCandidate(type){
 function readCandidates(type){return [...$(type+'Candidates').querySelectorAll('.candidate')].map(d=>{const o={type};d.querySelectorAll('[data-k]').forEach(el=>o[el.dataset.k]=el.dataset.k==='name'?el.value:Number(el.value||0));return o})}
 function fallback(type){const p=type;return {type,name:'現在入力',flat:type==='weapon'?val('weapon'):(type==='head'?val('head'):(type==='armor'?val('armor'):0)),Atk:val(p+'Atk'),Skill:val(p+'Skill'),Crit:val(p+'Crit'),Rate:val(p+'Rate'),Hp:val(p+'Hp')}}
 function runOptimizer(){
- const lists=['weapon','head','armor','pet','scroll'].map(t=>{const a=readCandidates(t);return a.length?a:[fallback(t)]});
+ const includeCurrent=$('includeCurrentGear').checked;
+ const lists=['weapon','head','armor','pet','scroll'].map(t=>{
+  const a=readCandidates(t);
+  if(includeCurrent) return [fallback(t),...a];
+  return a.length?a:[fallback(t)];
+ });
  const total=lists.reduce((p,a)=>p*a.length,1); if(total>500000){$('optimizerSummary').textContent=`${total.toLocaleString('ja-JP')}通りあります。試作版の安全上限50万通りを超えています。候補を少し減らしてください。`;return}
  const race={Atk:val('raceAtk'),Skill:val('raceSkill'),Crit:val('raceCrit'),Rate:val('raceRate'),Hp:val('raceHp')};
  const level=val('level'), statAtk=val('levelAtk'), baseHp=val('baseHp'), statHp=val('statHp'); const coeff=val('coeff1'),hits=Math.max(1,Math.floor(val('hits1')));
@@ -60,7 +71,7 @@ function runOptimizer(){
  out.sort((x,y)=>y.exp-x.exp); const top=out.slice(0,5); $('optimizerSummary').textContent=`${total.toLocaleString('ja-JP')}通りを総当たりしました。現在は「スキル1・クリ率込み期待火力」の高い順です。`;
  $('optimizerResults').innerHTML=top.map((r,i)=>`<div class="candidate rank"><h3>${['🥇','🥈','🥉','4位','5位'][i]} ${i<3?'':' '}期待火力 ${fmt(r.exp)}</h3><div>${r.xs.map(x=>`<span class="pill">${optCats[x.type]}：${x.name}</span>`).join('')}</div><div class="cards" style="margin-top:10px">${card('攻撃ボーナス',pct(r.atk))}${card('スキルダメ',pct(r.skill))}${card('クリ率',pct(r.rate))}${card('クリダメ',pct(r.crit))}${card('スキル1 通常',fmt(r.skillD))}${card('スキル1 クリ',fmt(r.skillCrit))}${card('通常攻撃',fmt(r.normal))}${card('通常期待火力',fmt(r.nexp))}${card('最終HP',fmt(r.hp))}</div>${i?`<p class="mini">1位との差 ${((r.exp/top[0].exp-1)*100).toFixed(3)}%</p>`:''}</div>`).join('');
 }
-['weapon','head','armor','pet','scroll'].forEach(addCandidate);
+// ②の装備が初期候補なので、追加候補は必要な分だけ登録します。
 
 $('reset').onclick=()=>location.reload();calc();
 </script></body></html>
